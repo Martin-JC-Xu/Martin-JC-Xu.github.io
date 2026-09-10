@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- Primary Meta Tags -->
+  <meta name="title" content="Neural Centroidal Voronoi Tessellations">
+
+  <meta name="description" content="Centroidal Voronoi tessellation (CVT) is a fundamental primitive for high-quality surface sampling and isotropic remeshing in computer graphics. However, computing surface CVTs with classical solvers remains expensive: each optimization step repeatedly constructs restricted Voronoi diagrams (RVDs) and integrates quantities over their surface cells. We introduce Neural CVT, a learning-based surface-CVT solver that replaces these costly geometric computations with a recurrent neural optimizer, accelerating CVT optimization by one to two orders of magnitude in our benchmarks while preserving geometric fidelity. Given an input surface, we sample a dense point cloud and extract multi-scale geometric descriptors with a graph neural encoder. A lightweight recurrent optimizer then refines seed positions over a small number of iterations, aggregating interpolated surface features and optimization history to predict per-seed displacements. The framework is trained self-supervised using CVT objectives that promote uniform distributions and, when desired, feature alignment. Across diverse organic and CAD-like shapes, Neural CVT generalizes to unseen geometry, initialization strategies, and seed densities, producing isotropic, feature-preserving remeshes comparable to state-of-the-art offline optimization methods at a fraction of the computational cost.">
+  <meta name="keywords" content="centroidal Voronoi tessellation, surface remeshing, geometric deep learning, learned optimization">
+  <meta name="author" content="Jiacheng Xu, Bo Pang, Rui Xu, Xiaocheng Zhang, Yang Liu, Fei Zhu, Guoping Wang, Peng-Shuai Wang">
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English">
+  
+
+  <!-- Additional SEO -->
+  <meta name="theme-color" content="#2563eb">
+  <meta name="msapplication-TileColor" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://ajax.googleapis.com">
+  <link rel="preconnect" href="https://documentcloud.adobe.com">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+  <title>Neural Centroidal Voronoi Tessellations</title>
+  
+  <!-- Favicon and App Icons -->
+  <link rel="icon" type="image/x-icon" href="static/images/icon.png">
+  <link rel="apple-touch-icon" href="static/images/icon.png">
+  
+  <!-- Critical CSS - Load synchronously -->
+  <link rel="stylesheet" href="static/css/bulma.min.css">
+  <link rel="stylesheet" href="static/css/index.css">
+  
+  <!-- Non-critical CSS - Load asynchronously -->
+  <link rel="preload" href="static/css/bulma-carousel.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="static/css/bulma-slider.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="static/css/fontawesome.all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="preload" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  
+  <!-- Fallback for browsers that don't support preload -->
+  <noscript>
+    <link rel="stylesheet" href="static/css/bulma-carousel.min.css">
+    <link rel="stylesheet" href="static/css/bulma-slider.min.css">
+    <link rel="stylesheet" href="static/css/fontawesome.all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  </noscript>
+  
+  <!-- Fonts - Optimized loading -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Defer non-critical JavaScript -->
+  <script defer src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="https://documentcloud.adobe.com/view-sdk/main.js"></script>
+  <script defer src="static/js/fontawesome.all.min.js"></script>
+  <script defer src="static/js/bulma-carousel.min.js"></script>
+  <script defer src="static/js/bulma-slider.min.js"></script>
+  <script defer src="static/js/index.js"></script>
+</head>
+<body>
+
+
+  <!-- Scroll to Top Button -->
+  <button class="scroll-to-top" onclick="scrollToTop()" title="Scroll to top" aria-label="Scroll to top">
+    <i class="fas fa-chevron-up"></i>
+  </button>
+
+  <main id="main-content">
+
+  <!-- Institution logos -->
+  <section class="institution-logos">
+    <div class="container is-max-desktop">
+      <div class="institution-logos-row">
+        <!-- TODO: Replace with the official Peking University URL -->
+        <a href="https://www.pku.edu.cn" target="_blank" rel="noopener noreferrer" class="institution-logo-link" aria-label="Peking University">
+          <img src="static/images/logo_pku.png" alt="Peking University" class="institution-logo"/>
+        </a>
+        <!-- TODO: Replace with the official University of Hong Kong URL -->
+        <a href="https://www.hku.hk" target="_blank" rel="noopener noreferrer" class="institution-logo-link" aria-label="The University of Hong Kong">
+          <img src="static/images/logo_hku.png" alt="The University of Hong Kong" class="institution-logo"/>
+        </a>
+        <!-- TODO: Replace with the official Microsoft Research Asia URL -->
+        <a href="https://www.microsoft.com/en-us/research/lab/microsoft-research-asia/" target="_blank" rel="noopener noreferrer" class="institution-logo-link" aria-label="Microsoft Research Asia">
+          <img src="static/images/logo_msra.png" alt="Microsoft Research Asia" class="institution-logo institution-logo-wide"/>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Neural Centroidal Voronoi Tessellations</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block"><a  target="_blank">Jiacheng Xu</a><sup>1</sup>,</span>
+              <span class="author-block"><a  target="_blank">Bo Pang</a><sup>1</sup>,</span>
+              <span class="author-block"><a  target="_blank">Rui Xu</a><sup>2</sup>,</span>
+              <span class="author-block"><a  target="_blank">Xiaocheng Zhang</a><sup>1</sup>,</span>
+              <span class="author-block"><a  target="_blank">Yang Liu</a><sup>3</sup>,</span>
+              <span class="author-block"><a  target="_blank">Fei Zhu</a><sup>1</sup>,</span>
+              <span class="author-block"><a  target="_blank">Guoping Wang</a><sup>1†</sup>,</span>
+              <span class="author-block"><a  target="_blank">Peng-Shuai Wang</a><sup>1†</sup></span>
+            </div>
+
+                  <div class="is-size-5 publication-authors">
+                    <span class="author-block">
+                      <sup>1</sup>Peking University,
+                      <sup>2</sup>The University of Hong Kong,
+                      <sup>3</sup>Microsoft Research Asia
+                    </span>
+                    <span class="author-block has-text-weight-bold is-block" style="margin-top: 10px; color: #363636;">
+                      ACM TOG (SIGGRAPH ASIA 2026)
+                    </span>
+                    <span class="eql-cntrb"><small>
+                      <sup>†</sup>Corresponding authors. 
+                    </small></span>
+                  </div>
+
+                  <div class="column has-text-centered">
+                    <div class="publication-links">
+                      <span class="link-block">
+                        <a href="https://arxiv.org/abs/2609.08497" target="_blank"
+                        class="external-link button is-normal is-rounded is-dark">
+                        <span class="icon">
+                          <i class="fas fa-file-pdf"></i>
+                        </span>
+                        <span>Paper</span>
+                      </a>
+                    </span>
+
+                  <!-- TODO: Replace with your GitHub repository URL -->
+                  <span class="link-block">
+                    <a href="https://github.com/sig-pku/NeuralCVT" target="_blank"
+                    class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-github"></i>
+                    </span>
+                    <span>Code</span>
+                  </a>
+                </span>
+
+                <span class="link-block">
+                  <a href="https://arxiv.org/abs/2609.08497" target="_blank"
+                  class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                    <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- Teaser video-->
+<section class="hero teaser">
+  <div class="container">
+    <div class="hero-body">
+      <!-- TODO: Replace with your teaser video -->
+      <div class="columns is-centered">
+        <div class="column is-11">
+          <video poster="" id="tree" autoplay controls muted loop height="100%" preload="metadata">
+            <!-- TODO: Add your video file path here -->
+            <source src="static/videos/teaser.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+      <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle has-text-centered has-text-grey is-size-6" style="margin-bottom: 0.3rem; font-weight: 600; font-family: 'Times New Roman', serif;">
+            Isotropic, feature-preserving surface remeshing across diverse geometries.
+          </h2>
+        </div>
+      </div>
+      <!-- TODO: Replace with your video description -->
+      <!-- <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle is-5 has-text-justified has-text-weight-semibold" style="font-family: 'Times New Roman', serif;">
+            Isotropic, feature-preserving surface remeshing across diverse geometries.
+          </h2>
+        </div>
+      </div>
+    </div> -->
+  </div>
+</section>
+<!-- End teaser video -->
+
+<!-- Paper abstract -->
+<section class="section hero is-light">
+  <div class="container">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-11">
+        <h2 class="title is-3">Abstract</h2>
+        <div class="content has-text-justified">
+          <!-- TODO: Replace with your paper abstract -->
+          <p>
+            Centroidal Voronoi tessellation (CVT) is a fundamental primitive for high-quality surface sampling and isotropic remeshing in computer graphics. However, computing surface CVTs with classical solvers remains expensive: each optimization step repeatedly constructs restricted Voronoi diagrams (RVDs) and integrates quantities over their surface cells. We introduce Neural CVT, a learning-based surface-CVT solver that replaces these costly geometric computations with a recurrent neural optimizer, accelerating CVT optimization by one to two orders of magnitude in our benchmarks while preserving geometric fidelity. Given an input surface, we sample a dense point cloud and extract multi-scale geometric descriptors with a graph neural encoder. A lightweight recurrent optimizer then refines seed positions over a small number of iterations, aggregating interpolated surface features and optimization history to predict per-seed displacements. The framework is trained self-supervised using CVT objectives that promote uniform distributions and, when desired, feature alignment. Across diverse organic and CAD-like shapes, Neural CVT generalizes to unseen geometry, initialization strategies, and seed densities, producing isotropic, feature-preserving remeshes comparable to state-of-the-art offline optimization methods at a fraction of the computational cost.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End paper abstract -->
+
+<!-- Method section -->
+<section class="hero is-small">
+  <div class="container">
+    <div class="hero-body">
+      <div class="has-text-centered">
+        <h2 class="title is-3">Method</h2>
+        <div class="columns is-centered">
+          <div class="column is-11">
+            <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--background-primary); border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+              <!-- TODO: Replace with your method pipeline image -->
+              <img src="static/images/overview.png" alt="Method Pipeline" loading="lazy" style="border-radius: var(--border-radius); width: 100%; height: auto;"/>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Caption - moved outside -->
+      <div class="columns is-centered" style="margin-top: 0.3rem;">
+        <div class="column is-11">
+          <h2 class="subtitle has-text-centered has-text-grey is-size-6" style="margin-bottom: 0.3rem; font-weight: 600; font-family: 'Times New Roman', serif;">
+            Overview of Neural CVT.
+          </h2>
+        </div>
+      </div>
+      <!-- Text Description -->
+      <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle is-5 has-text-justified has-text-weight-semibold" style="font-family: 'Times New Roman', serif;">The input mesh is sampled into a dense point cloud and encoded by a geometry encoder into global surface features. Starting from initial seeds, a recurrent optimizer iteratively refines seed positions: at each step the seeds interpolate surface features, pass through a seed encoder, update a GRU hidden state, and a decoder predicts per-seed displacements. The optimized seeds are used to evaluate the training loss and, at inference, converted into the final mesh via restricted Voronoi diagram (RVD) construction.
+          </h2>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End Method section -->
+
+<!-- Results section -->
+<section class="hero is-small is-light">
+  <div class="container">
+    <div class="hero-body">
+      <div class="has-text-centered">
+        <h2 class="title is-3">Results</h2>
+      </div>
+
+      <div class="columns is-centered">
+        <div class="column is-7">
+          <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--background-primary); border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+            <video poster="" id="result-spot" autoplay controls muted loop height="100%" preload="metadata" style="border-radius: var(--border-radius); width: 100%; height: auto;">
+              <source src="static/videos/spot.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+      <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle has-text-centered has-text-grey is-size-6" style="margin-bottom: 0.3rem; font-weight: 600; font-family: 'Times New Roman', serif;">
+            RVD and its dual mesh from seeds optimized over different numbers of inference iterations.
+          </h2>
+        </div>
+      </div>
+
+      <div class="columns is-centered">
+        <div class="column is-6">
+          <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--background-primary); border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+            <img src="static/images/cmp_time_all.png" alt="Execution time comparison" loading="lazy" style="border-radius: var(--border-radius); width: 100%; height: auto;"/>
+          </div>
+        </div>
+      </div>
+      <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle has-text-centered has-text-grey is-size-6" style="margin-bottom: 0.3rem; font-weight: 600; font-family: 'Times New Roman', serif;">
+            Execution time to reach the same CVT energy across all test models, plotted on log-log axes.
+          </h2>
+        </div>
+      </div>
+
+      <div class="columns is-centered">
+        <div class="column is-7">
+          <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--background-primary); border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+            <video poster="" id="result-kitten" autoplay controls muted loop height="100%" preload="metadata" style="border-radius: var(--border-radius); width: 100%; height: auto;">
+              <source src="static/videos/kitten.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+      <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle has-text-centered has-text-grey is-size-6" style="margin-bottom: 0.3rem; font-weight: 600; font-family: 'Times New Roman', serif;">
+            Qualitative comparison on an organic shape.
+          </h2>
+        </div>
+      </div>
+
+
+      <div class="columns is-centered">
+        <div class="column is-7">
+          <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--background-primary); border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+            <video poster="" id="result-block" autoplay controls muted loop height="100%" preload="metadata" style="border-radius: var(--border-radius); width: 100%; height: auto;">
+              <source src="static/videos/block.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+      <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle has-text-centered has-text-grey is-size-6" style="margin-bottom: 0.3rem; font-weight: 600; font-family: 'Times New Roman', serif;">
+            Qualitative comparison on a CAD-like shape.
+          </h2>
+        </div>
+      </div>
+
+      <div class="columns is-centered">
+        <div class="column is-6">
+          <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--background-primary); border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+            <img src="static/images/weak_feature.png" alt="Weak feature recovery" loading="lazy" style="border-radius: var(--border-radius); width: 100%; height: auto;"/>
+          </div>
+        </div>
+      </div>
+      <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle has-text-centered has-text-grey is-size-6" style="margin-bottom: 0.3rem; font-weight: 600; font-family: 'Times New Roman', serif;">
+            Weak feature recovery.
+          </h2>
+        </div>
+      </div>
+
+      <div class="columns is-centered">
+        <div class="column is-6">
+          <div style="margin-top: 1.5rem; padding: 1.5rem; background: var(--background-primary); border-radius: var(--border-radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+            <img src="static/images/scale.png" alt="Scalability evaluation" loading="lazy" style="border-radius: var(--border-radius); width: 100%; height: auto;"/>
+          </div>
+        </div>
+      </div>
+      <div class="columns is-centered" style="margin-top: -1.0rem;">
+        <div class="column is-11">
+          <h2 class="subtitle has-text-centered has-text-grey is-size-6" style="margin-bottom: 0.3rem; font-weight: 600; font-family: 'Times New Roman', serif;">
+            Qualitative scalability evaluation of our method on organic, CAD, and high-genus models.
+          </h2>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End Results section -->
+
+<template>
+<!-- Image carousel -->
+<section class="hero is-small">
+  <div class="hero-body">
+    <div class="container">
+      <div id="results-carousel" class="carousel results-carousel">
+       <div class="item">
+        <!-- TODO: Replace with your research result images -->
+        <img src="static/images/carousel1.jpg" alt="First research result visualization" loading="lazy"/>
+        <!-- TODO: Replace with description of this result -->
+        <h2 class="subtitle has-text-centered">
+          First image description.
+        </h2>
+      </div>
+      <div class="item">
+        <!-- Your image here -->
+        <img src="static/images/carousel2.jpg" alt="Second research result visualization" loading="lazy"/>
+        <h2 class="subtitle has-text-centered">
+          Second image description.
+        </h2>
+      </div>
+      <div class="item">
+        <!-- Your image here -->
+        <img src="static/images/carousel3.jpg" alt="Third research result visualization" loading="lazy"/>
+        <h2 class="subtitle has-text-centered">
+         Third image description.
+       </h2>
+     </div>
+     <div class="item">
+      <!-- Your image here -->
+      <img src="static/images/carousel4.jpg" alt="Fourth research result visualization" loading="lazy"/>
+      <h2 class="subtitle has-text-centered">
+        Fourth image description.
+      </h2>
+    </div>
+  </div>
+</div>
+</div>
+</section>
+<!-- End image carousel -->
+</template>
+
+<template>
+<!-- Youtube video -->
+<section class="hero is-small is-light">
+  <div class="hero-body">
+    <div class="container">
+      <!-- Paper video. -->
+      <h2 class="title is-3">Video Presentation</h2>
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-11">
+          
+          <div class="publication-video">
+            <!-- TODO: Replace with your YouTube video ID -->
+            <iframe src="https://www.youtube.com/embed/JkaxUblCGz0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- End youtube video -->
+</template>
+
+<!--BibTex citation -->
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <div class="bibtex-header">
+        <h2 class="title">BibTeX</h2>
+        <button class="copy-bibtex-btn" onclick="copyBibTeX()" title="Copy BibTeX to clipboard">
+          <i class="fas fa-copy"></i>
+          <span class="copy-text">Copy</span>
+        </button>
+      </div>
+      <pre id="bibtex-code" style="padding: 0.1rem 0.5rem;"><code>@article{Xu2026NCVT,
+  title   = {Neural Centroidal Voronoi Tessellations},
+  author  = {Jiacheng Xu and Bo Pang and Rui Xu and Xiaocheng Zhang and Yang Liu and Fei Zhu and Guoping Wang and Peng-Shuai Wang},
+  journal = {ACM Trans. Graph. (SIGGRAPH ASIA)},
+  year    = {2026}
+}</code></pre>
+    </div>
+</section>
+<!--End BibTex citation -->
+
+
+  <footer class="footer" style="padding: 1rem 1.5rem 1rem;">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content has-text-centered">
+          <p>
+            <small>
+              This website is based on the <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank">Academic Project Page Template</a>, originally adapted from <a href="https://nerfies.github.io" target="_blank">Nerfies</a>.
+            </small>
+          </p>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- Statcounter tracking code -->
+  
+<!-- You can add a tracker to track page visits by creating an account at statcounter.com -->
+
+    <!-- End of Statcounter Code -->
+
+  </body>
+  </html>
